@@ -1,5 +1,3 @@
-import { capitalize } from "lodash";
-
 export default class SidebarPage {
   private realmsDrpDwn = "realmSelectorToggle";
   private realmsList = "realmSelector";
@@ -24,10 +22,7 @@ export default class SidebarPage {
 
   goToRealm(realmName: string) {
     cy.findByTestId(this.realmsList).scrollIntoView().click();
-    cy.findByTestId(this.realmsList)
-      .get("ul")
-      .contains(capitalize(realmName))
-      .click();
+    cy.findByTestId(this.realmsList).get("ul").contains(realmName).click();
 
     return this;
   }

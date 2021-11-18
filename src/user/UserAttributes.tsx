@@ -1,15 +1,16 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { pick, pipe, mapValues } from "lodash/fp";
 import {
   ActionGroup,
   AlertVariant,
   Button,
   FormGroup,
+  FormSelect,
+  FormSelectOption,
   PageSection,
   PageSectionVariants,
-  TextInput,
 } from "@patternfly/react-core";
 
 import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
@@ -23,14 +24,25 @@ type UserAttributesProps = {
   user: UserRepresentation;
 };
 
-const ATTRIBUTES = ["market", "submarket", "range", "brand"];
+const ATTRIBUTES = ["userType"];
 
 export const UserAttributes = ({ user }: UserAttributesProps) => {
   const { t } = useTranslation("users");
   const adminClient = useAdminClient();
   const { addAlert, addError } = useAlerts();
 
-  const { handleSubmit, register, errors } = useForm({
+  const userTypeFormOptions = [
+    {
+      key: "user-type-placeholder",
+      value: "",
+      label: t("selectone"),
+      isPlaceholder: true,
+    },
+    { key: "user-type-dealer", value: "dealer", label: t("dealer") },
+    { key: "user-type-internal", value: "internal", label: t("internal") },
+  ];
+
+  const { handleSubmit, control, errors } = useForm({
     defaultValues: user.attributes
       ? mapValues((v: any) => v[0], user.attributes)
       : {},
@@ -59,76 +71,29 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
         className="pf-u-mt-lg"
       >
         <FormGroup
-          label={t("market")}
-          fieldId="kc-market"
+          label={t("userType")}
+          fieldId="kc-userType"
           isRequired
-          validated={errors.market ? "error" : "default"}
+          validated={errors.userType ? "error" : "default"}
           helperTextInvalid={t("common:required")}
         >
-          <TextInput
-            ref={register()}
-            type="text"
-            id={`kc-market`}
-            name="market"
-          />
-        </FormGroup>
-        <FormGroup
-          label={t("submarket")}
-          fieldId="kc-submarket"
-          isRequired
-          validated={errors.submarket ? "error" : "default"}
-          helperTextInvalid={t("common:required")}
-        >
-          <TextInput
-            ref={register()}
-            type="text"
-            id="kc-submarket"
-            name="submarket"
-          />
-        </FormGroup>
-        <FormGroup
-          label={t("range")}
-          fieldId={`kc-range`}
-          isRequired
-          validated={errors.range ? "error" : "default"}
-          helperTextInvalid={t("common:required")}
-        >
-          <TextInput
-            ref={register()}
-            type="text"
-            id={`kc-range`}
-            name="range"
-          />
-        </FormGroup>
-        <FormGroup
-          label={t("brand")}
-          fieldId="kc-brand"
-          isRequired
-          validated={errors.brand ? "error" : "default"}
-          helperTextInvalid={t("common:required")}
-        >
-          <TextInput ref={register()} type="text" id="kc-brand" name="brand" />
-        </FormGroup>
-        {/* TODO: capire perchè questo non va {ATTRIBUTES.forEach((attr) => {
-          console.log(attr);
-
-          return (
-            <FormGroup
-              label={t(attr)}
-              fieldId={`kc-${attr}`}
-              isRequired
-              validated={errors[attr] ? "error" : "default"}
-              helperTextInvalid={t("common:required")}
-            >
-              <TextInput
-                ref={register()}
+          <Controller
+            name="userType"
+            control={control}
+            render={(field) => (
+              <FormSelect
+                {...field}
+                id="kc-userType"
+                name="userType"
                 type="text"
-                id={`kc-${attr}`}
-                name={attr}
-              />
-            </FormGroup>
-          );
-        })} */}
+              >
+                {userTypeFormOptions.map(({ key, ...option }) => (
+                  <FormSelectOption key={key} {...option} />
+                ))}
+              </FormSelect>
+            )}
+          />
+        </FormGroup>
         <ActionGroup>
           <Button data-testid="save-attribute" variant="primary" type="submit">
             {t("common:save")}

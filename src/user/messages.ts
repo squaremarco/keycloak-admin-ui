@@ -116,5 +116,9 @@ export default {
     unlock: "Unlock",
     unlockUsersSuccess: "Any temporarily locked users are now unlocked",
     unlockUsersError: "Could not unlock all users {{error}}",
+    dealer: "Dealer",
+    internal: "Internal",
+    userType: "User Type",
+    brand: "Brand",
   },
 };

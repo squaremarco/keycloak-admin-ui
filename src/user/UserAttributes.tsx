@@ -35,7 +35,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
     {
       key: "user-type-placeholder",
       value: "",
-      label: t("selectone"),
+      label: t("common:selectOne"),
       isPlaceholder: true,
     },
     { key: "user-type-dealer", value: "dealer", label: t("dealer") },

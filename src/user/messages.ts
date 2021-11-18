@@ -124,5 +124,6 @@ export default {
     defaultShipTo: "Default ship to",
     addDistributorshipText: "Add distributorship",
     actions: "Actions",
+    distributiorships: "Distributiorships",
   },
 };

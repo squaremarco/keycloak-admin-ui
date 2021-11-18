@@ -1,7 +1,17 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Controller, useForm, useFieldArray } from "react-hook-form";
-import { pick, pipe, mapValues } from "lodash/fp";
+import {
+  pick,
+  pipe,
+  mapValues,
+  values,
+  isArray,
+  isEmpty,
+  every,
+  omit,
+  last,
+} from "lodash/fp";
 import {
   ActionGroup,
   AlertVariant,
@@ -29,7 +39,6 @@ import {
   Tbody,
   Td,
 } from "@patternfly/react-table";
-import { isArray } from "lodash";
 
 type UserAttributesProps = {
   user: UserRepresentation;
@@ -46,7 +55,7 @@ type UserForm = {
   distributorships: Distributorship[];
 };
 
-const ATTRIBUTES = ["userType", "distributorship"];
+const ATTRIBUTES = ["userType", "distributorships"];
 
 const DISTRIBUTORSHIP_COLUMNS: Array<
   "brand" | "salesOrganizationAndSoldTo" | "defaultShipTo"
@@ -74,7 +83,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
     { key: "user-type-internal", value: "internal", label: t("internal") },
   ];
 
-  const { handleSubmit, control, register, errors } = useForm<UserForm>({
+  const { handleSubmit, control, register, errors, watch } = useForm<UserForm>({
     defaultValues: user.attributes
       ? mapValues((v: any) => {
           try {
@@ -88,8 +97,16 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
 
   const { fields, append, remove } = useFieldArray<Distributorship>({
     control,
-    name: "distributorship",
+    name: "distributorships",
   });
+
+  const watchDistributorships = watch("distributorships");
+
+  const lastDistributorshipIsEmpty = pipe(
+    last,
+    omit(["id"]),
+    (d: Distributorship) => every(isEmpty, values(d))
+  )(watchDistributorships);
 
   const save = async (attributeForm: AttributeForm) => {
     try {
@@ -176,7 +193,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
                       dataLabel={t(column)}
                     >
                       <TextInput
-                        name={`distributorship[${rowIndex}].${column}`}
+                        name={`distributorships[${rowIndex}].${column}`}
                         ref={register()}
                         aria-label={`${column}-input`}
                         defaultValue={distributorship[column]}
@@ -185,7 +202,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
                             ? "error"
                             : "default"
                         }
-                        data-testid={`distributorship-${column}-input`}
+                        data-testid={`distributorships-${column}-input`}
                       />
                     </Td>
                   ))}
@@ -215,7 +232,8 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
                     className="kc-distributorship__plus-icon"
                     onClick={() => append(DISTRIBUTORSHIP_EMPTY_VALUE)}
                     icon={<PlusCircleIcon />}
-                    data-testid="distributorship-add-row"
+                    isDisabled={lastDistributorshipIsEmpty}
+                    data-testid="distributorships-add-row"
                   >
                     {t("addDistributorshipText")}
                   </Button>

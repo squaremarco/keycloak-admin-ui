@@ -83,6 +83,17 @@ const isJson = (str: string) => {
   return true;
 };
 
+// const useToggle = (d: boolean): [boolean, (o?: boolean) => void] => {
+//   const [value, setValue] = useState(d);
+
+//   const toggleValue = useCallback(
+//     (o = undefined) => setValue(o || !value),
+//     [value]
+//   );
+
+//   return [value, toggleValue];
+// };
+
 type DistributionshipFormProps = {
   form: UseFormMethods<UserForm>;
   array: {
@@ -93,15 +104,52 @@ type DistributionshipFormProps = {
       shouldFocus?: boolean | undefined
     ) => void;
   };
-  lastDistributorshipIsEmpty: boolean;
 };
 
-const DistributionshipForm = ({
-  form,
-  array,
-  lastDistributorshipIsEmpty,
-}: DistributionshipFormProps) => {
+const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
   const { t } = useTranslation("users");
+
+  const brandsMock = [
+    {
+      value: "",
+      label: t("common:selectOne"),
+      isPlaceholder: true,
+    },
+    {
+      value: "brand1",
+      label: "Brandeburg",
+    },
+    {
+      value: "brand2",
+      label: "Pizzaburg",
+    },
+  ];
+
+  const salesOrganizationMock = [
+    {
+      value: "",
+      label: t("common:selectOne"),
+      isPlaceholder: true,
+    },
+    {
+      value: "org1",
+      label: "Brandeburg / Org1",
+    },
+    {
+      value: "org2",
+      label: "Pizzaburg / Org2",
+    },
+  ];
+
+  const { register, control, errors, watch } = form;
+
+  const watchDistributorships = watch("distributorships");
+
+  const lastDistributorshipIsEmpty = pipe(
+    last,
+    omit(["id"]),
+    (d: Distributorship) => every(isEmpty, values(d))
+  )(watchDistributorships);
 
   useEffect(() => {
     if (array.fields.length === 0) {
@@ -131,26 +179,66 @@ const DistributionshipForm = ({
       <Tbody>
         {array.fields.map((distributorship, rowIndex) => (
           <Tr key={distributorship.id} data-testid="distributorship-row">
-            {DISTRIBUTORSHIP_COLUMNS.map((column) => (
-              <Td
-                key={`${distributorship.id}-${column}`}
-                id={`text-input-${rowIndex}-${column}`}
-                dataLabel={t(column)}
-              >
-                <TextInput
-                  name={`distributorships[${rowIndex}].${column}`}
-                  ref={form.register()}
-                  aria-label={`${column}-input`}
-                  defaultValue={distributorship[column]}
-                  validated={
-                    form.errors.distributorships?.[rowIndex]?.[column]
-                      ? "error"
-                      : "default"
-                  }
-                  data-testid={`distributorships-${column}-input`}
-                />
-              </Td>
-            ))}
+            <Td
+              key={`${distributorship.id}-brand`}
+              id={`select-input-${rowIndex}-brand`}
+              dataLabel={t("brand")}
+            >
+              <Controller
+                name={`distributorships[${rowIndex}].brand`}
+                control={control}
+                render={(field) => (
+                  <FormSelect
+                    {...field}
+                    id={`kc-distributorship-brand-${distributorship.id}`}
+                    name={`distributorships[${rowIndex}].brand`}
+                  >
+                    {brandsMock.map(({ ...option }, index) => (
+                      <FormSelectOption key={index} {...option} />
+                    ))}
+                  </FormSelect>
+                )}
+              />
+            </Td>
+            <Td
+              key={`${distributorship.id}-salesOrganizationAndSoldTo`}
+              id={`select-input-${rowIndex}-salesOrganizationAndSoldTo`}
+              dataLabel={t("salesOrganizationAndSoldTo")}
+            >
+              <Controller
+                name={`distributorships[${rowIndex}].salesOrganizationAndSoldTo`}
+                control={control}
+                render={(field) => (
+                  <FormSelect
+                    {...field}
+                    id={`kc-distributorship-salesOrganizationAndSoldTo-${distributorship.id}`}
+                    name={`distributorships[${rowIndex}].salesOrganizationAndSoldTo`}
+                  >
+                    {salesOrganizationMock.map(({ ...option }, index) => (
+                      <FormSelectOption key={index} {...option} />
+                    ))}
+                  </FormSelect>
+                )}
+              />
+            </Td>
+            <Td
+              key={`${distributorship.id}-defaultShipTo`}
+              id={`text-input-${rowIndex}-defaultShipTo`}
+              dataLabel={t("defaultShipTo")}
+            >
+              <TextInput
+                name={`distributorships[${rowIndex}].defaultShipTo`}
+                ref={register()}
+                aria-label="defaultShipTo-input"
+                defaultValue={distributorship.defaultShipTo}
+                validated={
+                  errors.distributorships?.[rowIndex]?.defaultShipTo
+                    ? "error"
+                    : "default"
+                }
+                data-testid="distributorships-defaultShipTo-input"
+              />
+            </Td>
             <Td
               key="minus-button"
               id={`kc-minus-button-${rowIndex}`}
@@ -213,20 +301,12 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
       : {},
   });
 
-  const { handleSubmit, control, errors, watch } = form;
+  const { handleSubmit, control, errors } = form;
 
   const array = useFieldArray<Distributorship>({
     control,
     name: "distributorships",
   });
-
-  const watchDistributorships = watch("distributorships");
-
-  const lastDistributorshipIsEmpty = pipe(
-    last,
-    omit(["id"]),
-    (d: Distributorship) => every(isEmpty, values(d))
-  )(watchDistributorships);
 
   const save = async (attributeForm: AttributeForm) => {
     try {
@@ -279,11 +359,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
           fieldId="kc-distributiorships"
           helperTextInvalid={t("common:required")}
         >
-          <DistributionshipForm
-            form={form}
-            array={array}
-            lastDistributorshipIsEmpty={lastDistributorshipIsEmpty}
-          />
+          <DistributionshipForm form={form} array={array} />
         </FormGroup>
         <ActionGroup>
           <Button data-testid="save-attribute" variant="primary" type="submit">

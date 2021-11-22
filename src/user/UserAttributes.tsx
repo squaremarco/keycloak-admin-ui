@@ -10,14 +10,17 @@ import {
 import {
   pick,
   pipe,
-  mapValues,
   values,
-  isArray,
   isEmpty,
   every,
   omit,
   last,
   map,
+  toPairs,
+  fromPairs,
+  cond,
+  identity,
+  T,
 } from "lodash/fp";
 import {
   ActionGroup,
@@ -34,7 +37,6 @@ import {
 import type UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
 
 import { useAlerts } from "../components/alert/Alerts";
-import type { AttributeForm } from "../components/attribute-form/AttributeForm";
 import { useAdminClient } from "../context/auth/AdminClient";
 import { FormAccess } from "../components/form-access/FormAccess";
 import { MinusCircleIcon, PlusCircleIcon } from "@patternfly/react-icons";
@@ -51,48 +53,44 @@ type UserAttributesProps = {
   user: UserRepresentation;
 };
 
+enum FORM_PROPS_NAMES {
+  USER_TYPE = "userType",
+  DISTRIBUTORSHIPS = "distributorships",
+}
+
+const ATTRIBUTES = [
+  FORM_PROPS_NAMES.USER_TYPE,
+  FORM_PROPS_NAMES.DISTRIBUTORSHIPS,
+];
+
+enum DISTRIBUTORSHIP_PROPS_NAMES {
+  BRAND = "brand",
+  SALES_ORGANIZATION_AND_SOLD_TO = "salesOrganizationAndSoldTo",
+  DEFAULT_SHIP_TO = "defaultShipTo",
+}
+
+const DISTRIBUTORSHIP_COLUMNS: Array<DISTRIBUTORSHIP_PROPS_NAMES> = [
+  DISTRIBUTORSHIP_PROPS_NAMES.BRAND,
+  DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO,
+  DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO,
+];
+
 type Distributorship = {
-  brand: string;
-  salesOrganizationAndSoldTo: string;
-  defaultShipTo: string;
+  [DISTRIBUTORSHIP_PROPS_NAMES.BRAND]: string;
+  [DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO]: string;
+  [DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO]: string;
 };
 
 type UserForm = {
-  userType: "internal" | "dealer";
-  distributorships: Distributorship[];
+  [FORM_PROPS_NAMES.USER_TYPE]: "internal" | "dealer";
+  [FORM_PROPS_NAMES.DISTRIBUTORSHIPS]: Distributorship[];
 };
-
-const ATTRIBUTES = ["userType", "distributorships"];
-
-const DISTRIBUTORSHIP_COLUMNS: Array<
-  "brand" | "salesOrganizationAndSoldTo" | "defaultShipTo"
-> = ["brand", "salesOrganizationAndSoldTo", "defaultShipTo"];
 
 const DISTRIBUTORSHIP_EMPTY_VALUE: Distributorship = {
-  brand: "",
-  salesOrganizationAndSoldTo: "",
-  defaultShipTo: "",
+  [DISTRIBUTORSHIP_PROPS_NAMES.BRAND]: "",
+  [DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO]: "",
+  [DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO]: "",
 };
-
-const isJson = (str: string) => {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
-};
-
-// const useToggle = (d: boolean): [boolean, (o?: boolean) => void] => {
-//   const [value, setValue] = useState(d);
-
-//   const toggleValue = useCallback(
-//     (o = undefined) => setValue(o || !value),
-//     [value]
-//   );
-
-//   return [value, toggleValue];
-// };
 
 type DistributionshipFormProps = {
   form: UseFormMethods<UserForm>;
@@ -127,17 +125,20 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
 
   const salesOrganizationMock = [
     {
-      value: "",
+      salesOrganization: "",
+      soldTo: "",
       label: t("common:selectOne"),
       isPlaceholder: true,
     },
     {
-      value: "org1",
-      label: "Brandeburg / Org1",
+      salesOrganization: "org1",
+      soldTo: "client1",
+      label: "Org1 / Client1",
     },
     {
-      value: "org2",
-      label: "Pizzaburg / Org2",
+      salesOrganization: "org2",
+      soldTo: "client2",
+      label: "Org2 / Client2",
     },
   ];
 
@@ -159,8 +160,7 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
 
   return (
     <TableComposable
-      className="kc-distributorship__table"
-      aria-label="Distributorships values"
+      className={`kc-${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}__table"`}
       variant="compact"
       borders={false}
     >
@@ -178,20 +178,23 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
       </Thead>
       <Tbody>
         {array.fields.map((distributorship, rowIndex) => (
-          <Tr key={distributorship.id} data-testid="distributorship-row">
+          <Tr key={distributorship.id}>
             <Td
-              key={`${distributorship.id}-brand`}
-              id={`select-input-${rowIndex}-brand`}
-              dataLabel={t("brand")}
+              key={`${distributorship.id}-${DISTRIBUTORSHIP_PROPS_NAMES.BRAND}`}
+              id={`select-input-${rowIndex}-${DISTRIBUTORSHIP_PROPS_NAMES.BRAND}`}
+              dataLabel={t(DISTRIBUTORSHIP_PROPS_NAMES.BRAND)}
             >
               <Controller
-                name={`distributorships[${rowIndex}].brand`}
+                name={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}[${rowIndex}].${DISTRIBUTORSHIP_PROPS_NAMES.BRAND}`}
                 control={control}
+                defaultValue={
+                  distributorship[DISTRIBUTORSHIP_PROPS_NAMES.BRAND]
+                }
                 render={(field) => (
                   <FormSelect
                     {...field}
-                    id={`kc-distributorship-brand-${distributorship.id}`}
-                    name={`distributorships[${rowIndex}].brand`}
+                    id={`kc-${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}-${DISTRIBUTORSHIP_PROPS_NAMES.BRAND}-${distributorship.id}`}
+                    name={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}[${rowIndex}].${DISTRIBUTORSHIP_PROPS_NAMES.BRAND}`}
                   >
                     {brandsMock.map(({ ...option }, index) => (
                       <FormSelectOption key={index} {...option} />
@@ -201,42 +204,58 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
               />
             </Td>
             <Td
-              key={`${distributorship.id}-salesOrganizationAndSoldTo`}
-              id={`select-input-${rowIndex}-salesOrganizationAndSoldTo`}
-              dataLabel={t("salesOrganizationAndSoldTo")}
+              key={`${distributorship.id}-${DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO}`}
+              id={`select-input-${rowIndex}-${DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO}`}
+              dataLabel={t(
+                DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO
+              )}
             >
               <Controller
-                name={`distributorships[${rowIndex}].salesOrganizationAndSoldTo`}
+                name={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}[${rowIndex}].${DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO}`}
                 control={control}
+                defaultValue={
+                  distributorship[
+                    DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO
+                  ]
+                }
                 render={(field) => (
                   <FormSelect
                     {...field}
-                    id={`kc-distributorship-salesOrganizationAndSoldTo-${distributorship.id}`}
-                    name={`distributorships[${rowIndex}].salesOrganizationAndSoldTo`}
+                    id={`kc-${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}-${DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO}-${distributorship.id}`}
+                    name={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}[${rowIndex}].${DISTRIBUTORSHIP_PROPS_NAMES.SALES_ORGANIZATION_AND_SOLD_TO}`}
                   >
-                    {salesOrganizationMock.map(({ ...option }, index) => (
-                      <FormSelectOption key={index} {...option} />
-                    ))}
+                    {salesOrganizationMock.map(
+                      ({ salesOrganization, soldTo, ...rest }, index) => (
+                        <FormSelectOption
+                          {...rest}
+                          key={index}
+                          value={`${salesOrganization}___${soldTo}`}
+                        />
+                      )
+                    )}
                   </FormSelect>
                 )}
               />
             </Td>
             <Td
-              key={`${distributorship.id}-defaultShipTo`}
-              id={`text-input-${rowIndex}-defaultShipTo`}
-              dataLabel={t("defaultShipTo")}
+              key={`${distributorship.id}-${DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO}`}
+              id={`text-input-${rowIndex}-${DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO}`}
+              dataLabel={t(DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO)}
             >
               <TextInput
-                name={`distributorships[${rowIndex}].defaultShipTo`}
+                name={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}[${rowIndex}].${DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO}`}
                 ref={register()}
-                aria-label="defaultShipTo-input"
-                defaultValue={distributorship.defaultShipTo}
+                defaultValue={
+                  distributorship[DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO]
+                }
+                aria-label={`${DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO} input`}
                 validated={
-                  errors.distributorships?.[rowIndex]?.defaultShipTo
+                  errors.distributorships?.[rowIndex]?.[
+                    DISTRIBUTORSHIP_PROPS_NAMES.DEFAULT_SHIP_TO
+                  ]
                     ? "error"
                     : "default"
                 }
-                data-testid="distributorships-defaultShipTo-input"
               />
             </Td>
             <Td
@@ -248,7 +267,7 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
                 id={`minus-button-${rowIndex}`}
                 aria-label={`remove with value ${distributorship.brand}, ${distributorship.salesOrganizationAndSoldTo} and ${distributorship.defaultShipTo}`}
                 variant="link"
-                className="kc-distributorship__minus-icon"
+                className={`kc-${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}__minus-icon`}
                 onClick={() => array.remove(rowIndex)}
               >
                 <MinusCircleIcon />
@@ -262,11 +281,11 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
               aria-label={t("addDistributorshipText")}
               id="plus-icon"
               variant="link"
-              className="kc-distributorship__plus-icon"
+              className={`kc-${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}__plus-icon`}
               onClick={() => array.append(DISTRIBUTORSHIP_EMPTY_VALUE)}
               icon={<PlusCircleIcon />}
               isDisabled={lastDistributorshipIsEmpty}
-              data-testid="distributorships-add-row"
+              data-testid={`${FORM_PROPS_NAMES.DISTRIBUTORSHIPS}-add-row`}
             >
               {t("addDistributorshipText")}
             </Button>
@@ -276,6 +295,55 @@ const DistributionshipForm = ({ form, array }: DistributionshipFormProps) => {
     </TableComposable>
   );
 };
+
+const serialize = pipe(
+  toPairs,
+  map(([k, v]) => {
+    if (k === FORM_PROPS_NAMES.DISTRIBUTORSHIPS) {
+      return [
+        k,
+        map(({ brand, defaultShipTo, salesOrganizationAndSoldTo }) => {
+          const [salesOrganization, soldTo] =
+            salesOrganizationAndSoldTo.split("___");
+          return JSON.stringify({
+            brand,
+            defaultShipTo,
+            salesOrganization,
+            soldTo,
+          });
+        }, v),
+      ];
+    }
+    return [k, [v]];
+  }),
+  fromPairs
+);
+
+const deserialize = pipe(
+  toPairs,
+  map(
+    cond([
+      [
+        ([k]) => k === FORM_PROPS_NAMES.DISTRIBUTORSHIPS,
+        ([k, v]) => [
+          k,
+          map((it) => {
+            const { brand, defaultShipTo, salesOrganization, soldTo } =
+              JSON.parse(it);
+
+            return {
+              brand,
+              defaultShipTo,
+              salesOrganizationAndSoldTo: `${salesOrganization}___${soldTo}`,
+            };
+          }, v),
+        ],
+      ],
+      [T, identity],
+    ])
+  ),
+  fromPairs
+);
 
 export const UserAttributes = ({ user }: UserAttributesProps) => {
   const { t } = useTranslation("users");
@@ -294,11 +362,7 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
   ];
 
   const form = useForm<UserForm>({
-    defaultValues: user.attributes
-      ? mapValues((v: any) => {
-          return map((i) => (isJson(i) ? JSON.parse(i) : i), v);
-        }, user.attributes)
-      : {},
+    defaultValues: user.attributes ? deserialize(user.attributes) : {},
   });
 
   const { handleSubmit, control, errors } = form;
@@ -308,14 +372,15 @@ export const UserAttributes = ({ user }: UserAttributesProps) => {
     name: "distributorships",
   });
 
-  const save = async (attributeForm: AttributeForm) => {
+  const save = async (userForm: UserForm) => {
     try {
-      const attributes = pipe(
-        pick(ATTRIBUTES),
-        mapValues((v) => (isArray(v) ? map((i) => JSON.stringify(i), v) : [v]))
-      )(attributeForm!);
-
-      await adminClient.users.update({ id: user.id! }, { ...user, attributes });
+      await adminClient.users.update(
+        { id: user.id! },
+        {
+          ...user,
+          attributes: pipe(pick(ATTRIBUTES), serialize)(userForm),
+        }
+      );
 
       addAlert(t("userSaved"), AlertVariant.success);
     } catch (error) {

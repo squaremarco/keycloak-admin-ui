@@ -12,7 +12,7 @@ mvn install
 
 The jar created with `mvn install` needs to be deployed to a Maven repository. From there, it will become part of the Keycloak server build.
 
-For development, you can also just copy the contents of `./target/classes` to `<keycloak server>/themes/keycloak.v2`. Then restart the server.
+For development, you can also just copy the contents of `./target/classes` to `<keycloak server>/themes/cmco`. Then restart the server.
 
 # To Run
 
@@ -22,4 +22,4 @@ Until New Admin Console becomes the default, you will need to start Keycloak ser
 $> bin/standalone.sh -Dprofile.feature.newadmin=enabled
 ```
 
-Then go to `Realm Settings --> Themes` and set Admin Console Theme to `keycloak.v2`.
+Then go to `Realm Settings --> Themes` and set Admin Console Theme to `cmco`.

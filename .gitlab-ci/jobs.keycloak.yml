@@ -1,0 +1,9 @@
+keycloak:test:
+  extends:
+    - .test
+
+keycloak:dockerize:
+  extends:
+    - .dockerize
+  needs:
+    - keycloak:test

@@ -1,0 +1,52 @@
+.nodeimage:
+  image: $CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX/node:17
+
+.kanikoimage:
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+
+.skippers:
+  except:
+    variables:
+      - $CI_COMMIT_MESSAGE =~ /\[skip-ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[ci-skip\]/
+      - $CI_COMMIT_MESSAGE =~ /\[skip ci\]/
+      - $CI_COMMIT_MESSAGE =~ /\[ci skip\]/
+
+.retry:
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+.tags:
+  tags: ["coolkube"]
+
+.test:
+  extends:
+    - .nodeimage
+    - .retry
+    - .tags
+  script:
+    - npm set-script prepare ""
+    - npm ci --cache .npm-cache --prefer-offline --no-audit
+    - npm run test
+  stage: test
+
+.dockerize:
+  extends:
+    - .tags
+    - .retry
+    - .kanikoimage
+    - .onlypullcache
+  stage: dockerize
+  script:
+    - SERVICE_NAME=${CI_JOB_NAME%:*}
+    - IMAGE=${CI_REGISTRY_IMAGE}/${SERVICE_NAME}:${CI_COMMIT_TAG}
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context ./ --dockerfile Dockerfile --destination ${IMAGE}
+  # only:
+  #   - tags

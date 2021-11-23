@@ -1,0 +1,5 @@
+include:
+  - /.gitlab-ci/stages.yml
+  - /.gitlab-ci/partials.yml
+  - /.gitlab-ci/cache.yml
+  - /.gitlab-ci/jobs.keycloak.yml

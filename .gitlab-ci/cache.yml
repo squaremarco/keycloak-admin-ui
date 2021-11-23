@@ -1,0 +1,10 @@
+cache: &global_cache
+  key: global_cache
+  paths:
+    - .npm-cache/
+  policy: pull-push
+
+.onlypullcache:
+  cache:
+    <<: *global_cache
+    policy: pull

@@ -4,7 +4,7 @@ import CreateUserPage from "../support/pages/admin_console/manage/users/CreateUs
 import Masthead from "../support/pages/admin_console/Masthead";
 import ListingPage from "../support/pages/admin_console/ListingPage";
 import UserDetailsPage from "../support/pages/admin_console/manage/users/UserDetailsPage";
-import AttributesTab from "../support/pages/admin_console/manage/AttributesTab";
+// import AttributesTab from "../support/pages/admin_console/manage/AttributesTab";
 import ModalUtils from "../support/util/ModalUtils";
 import { keycloakBefore } from "../support/util/keycloak_before";
 import GroupModal from "../support/pages/admin_console/manage/groups/GroupModal";
@@ -54,7 +54,7 @@ describe("Users test", () => {
   const modalUtils = new ModalUtils();
   const listingPage = new ListingPage();
   const userDetailsPage = new UserDetailsPage();
-  const attributesTab = new AttributesTab();
+  // const attributesTab = new AttributesTab();
 
   let itemId = "user_crud";
 
@@ -121,47 +121,48 @@ describe("Users test", () => {
       listingPage.searchItem(itemId).itemExist(itemId);
     });
 
-    it("User attributes test", () => {
-      cy.wait("@brute-force");
-      listingPage.searchItem(itemId).itemExist(itemId);
+    // TODO: rewrite attribute tests
+    // it("User attributes test", () => {
+    //   cy.wait("@brute-force");
+    //   listingPage.searchItem(itemId).itemExist(itemId);
 
-      listingPage.goToItemDetails(itemId);
+    //   listingPage.goToItemDetails(itemId);
 
-      attributesTab
-        .goToAttributesTab()
-        .fillLastRow("key", "value")
-        .saveAttribute();
+    //   attributesTab
+    //     .goToAttributesTab()
+    //     .fillLastRow("key", "value")
+    //     .saveAttribute();
 
-      masthead.checkNotificationMessage("The user has been saved");
-    });
+    //   masthead.checkNotificationMessage("The user has been saved");
+    // });
 
-    it("User attributes with multiple values test", () => {
-      cy.wait("@brute-force");
-      listingPage.searchItem(itemId).itemExist(itemId);
+    // it("User attributes with multiple values test", () => {
+    //   cy.wait("@brute-force");
+    //   listingPage.searchItem(itemId).itemExist(itemId);
 
-      listingPage.goToItemDetails(itemId);
+    //   listingPage.goToItemDetails(itemId);
 
-      cy.intercept("PUT", `/auth/admin/realms/master/users/*`).as("save-user");
+    //   cy.intercept("PUT", `/auth/admin/realms/master/users/*`).as("save-user");
 
-      const attributeKey = "key-multiple";
-      attributesTab
-        .goToAttributesTab()
-        .fillLastRow(attributeKey, "value")
-        .addRow()
-        .fillLastRow(attributeKey, "other value")
-        .saveAttribute();
+    //   const attributeKey = "key-multiple";
+    //   attributesTab
+    //     .goToAttributesTab()
+    //     .fillLastRow(attributeKey, "value")
+    //     .addRow()
+    //     .fillLastRow(attributeKey, "other value")
+    //     .saveAttribute();
 
-      cy.wait("@save-user").should(({ request, response }) => {
-        expect(response?.statusCode).to.equal(204);
+    //   cy.wait("@save-user").should(({ request, response }) => {
+    //     expect(response?.statusCode).to.equal(204);
 
-        expect(
-          request?.body.attributes[attributeKey],
-          "response body"
-        ).deep.equal(["value", "other value"]);
-      });
+    //     expect(
+    //       request?.body.attributes[attributeKey],
+    //       "response body"
+    //     ).deep.equal(["value", "other value"]);
+    //   });
 
-      masthead.checkNotificationMessage("The user has been saved");
-    });
+    //   masthead.checkNotificationMessage("The user has been saved");
+    // });
 
     it("Add user to groups test", () => {
       cy.wait("@brute-force");
